@@ -23,14 +23,6 @@ export const createQuizModel = (sequelize) => {
         key: 'id',
       },
     },
-    lesson_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'Lessons', // Ensure 'Lessons' table exists
-        key: 'id',
-      },
-    },
     title: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -40,5 +32,9 @@ export const createQuizModel = (sequelize) => {
       allowNull: true,
     },
   });
+
+  // Optional: If you want to specify the table name explicitly
+  // Quizzes.tableName = "Quizzes"; // Not necessary unless you want to enforce table name
+
   return Quizzes;
 };

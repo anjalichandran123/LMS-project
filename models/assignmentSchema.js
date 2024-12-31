@@ -15,10 +15,6 @@ export const createAssignmentModel = (sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: false,
         },
-        lesson_id: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-        },
         batch_id: {
             type: DataTypes.INTEGER,
             allowNull: false,

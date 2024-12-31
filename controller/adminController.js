@@ -880,26 +880,32 @@ export const approveLessonUpdate = async (req, res) => {
 };
 
 
-//create assignment under the lesson
-
+// Create assignment under a module
 export const assignAssignment = async (req, res) => {
-    const { course_id, module_id, lesson_id, batch_id, title, contentType, dueDate } = req.body;
+    const { course_id, module_id, batch_id, title, contentType, dueDate } = req.body;
 
     const sequelize = req.app.get("sequelize");
     const Assignment = createAssignmentModel(sequelize);
-    const Lesson = createLessonModel(sequelize);
+    const Module = createModuleModel(sequelize);
     const Batch = createBatchModel(sequelize);
 
     try {
-        // Validate batch and lesson existence
+        // Validate user role
+        const allowedRoles = ["admin", "superadmin", "teacher"];
+        if (!allowedRoles.includes(req.user.role)) {
+            return res.status(403).json({ message: "Forbidden: You do not have permission to create assignments" });
+        }
+
+        // Validate batch existence
         const batch = await Batch.findByPk(batch_id);
         if (!batch) {
             return res.status(404).json({ message: "Batch not found" });
         }
 
-        const lesson = await Lesson.findOne({ where: { id: lesson_id, module_id, course_id } });
-        if (!lesson) {
-            return res.status(404).json({ message: "Lesson not found" });
+        // Validate module existence under the course
+        const module = await Module.findOne({ where: { id: module_id, course_id } });
+        if (!module) {
+            return res.status(404).json({ message: "Module not found under the specified course" });
         }
 
         // Validate due date
@@ -924,13 +930,12 @@ export const assignAssignment = async (req, res) => {
                 const assignment = await Assignment.create({
                     course_id,
                     module_id,
-                    lesson_id,
                     batch_id,
                     title,
                     contentType,
                     contentUrl,
-                    submissionLink: `/api/assignments/submit/${batch_id}/${lesson_id}`,
-                    dueDate: parsedDueDate, // Include due date
+                    submissionLink: `/api/assignments/submit/${batch_id}/${module_id}`,
+                    dueDate: parsedDueDate,
                 });
 
                 return res.status(200).json({ message: "Assignment created successfully", assignment });
@@ -941,13 +946,12 @@ export const assignAssignment = async (req, res) => {
             const assignment = await Assignment.create({
                 course_id,
                 module_id,
-                lesson_id,
                 batch_id,
                 title,
                 contentType,
                 contentUrl: content,
-                submissionLink: `/api/assignments/submit/${batch_id}/${lesson_id}`,
-                dueDate: parsedDueDate, // Include due date
+                submissionLink: `/api/assignments/submit/${batch_id}/${module_id}`,
+                dueDate: parsedDueDate,
             });
 
             return res.status(200).json({ message: "Assignment created successfully", assignment });
@@ -959,7 +963,6 @@ export const assignAssignment = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-
 
 // Delete Assignment
 export const deleteAssignment = async (req, res) => {

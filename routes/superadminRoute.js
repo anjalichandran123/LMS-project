@@ -63,7 +63,7 @@ superAdminRouter.get("/viewallusers",authenticateAdminOrSuperAdmin, viewallusers
 superAdminRouter.get("/courses", authenticateAdminOrSuperAdmin, getAllCourses);
 superAdminRouter.get("/courses/:course_id/getModulesByCourse", authenticateAdminOrSuperAdmin, getModulesByCourse);
 superAdminRouter.get("/courses/:course_id/modules/:module_id/getLessonsByModuleAndCourse", authenticateAdminOrSuperAdmin, getLessonsByModuleAndCourse);
-superAdminRouter.get("/viewSubmittedAssignments/submissions/:batch_id/:lesson_id",authenticateAdminOrSuperAdmin,viewSubmittedAssignments);
+superAdminRouter.get("/viewSubmittedAssignments/submissions/:batch_id/:module_id",authenticateAdminOrSuperAdmin,viewSubmittedAssignments);
 superAdminRouter.get("/:quiz_id/getQuestionsByQuiz",authenticateAdminOrSuperAdmin,getQuestionsByQuiz);
 superAdminRouter.get("/getStudentMarksByBatch/batch/:batch_id/quiz/:quiz_id",authenticateAdminOrSuperAdmin,getStudentMarksByBatch);
 

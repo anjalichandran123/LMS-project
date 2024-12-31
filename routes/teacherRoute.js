@@ -24,7 +24,7 @@ const teacherrouter = express.Router();
 
 teacherrouter.get("/viewTeacherAssignedCourses/:teacher_id",authenticateTeacher,viewTeacherAssignedCourses);
 teacherrouter.get("/:teacherId/getStudentsInSameBatch",authenticateTeacher,getStudentsInSameBatch);
-teacherrouter.get("/viewSubmittedAssignments/submissions/:batch_id/:lesson_id",authenticateTeacher,viewSubmittedAssignments);
+teacherrouter.get("/viewSubmittedAssignments/submissions/:batch_id/:module_id",authenticateTeacher,viewSubmittedAssignments);
 teacherrouter.get("/getQuestionsByQuiz/:quiz_id/questions",authenticateTeacher,getQuestionsByQuiz);
 teacherrouter.get("/getStudentMarksByBatch/batch/:batch_id/quiz/:quiz_id",authenticateTeacher,getStudentMarksByBatch);
 

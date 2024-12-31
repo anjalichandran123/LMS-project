@@ -206,9 +206,9 @@ export const getStudentsInSameBatch = async (req, res) => {
     }
 };
 
-
+// View submitted assignments for a given batch and module
 export const viewSubmittedAssignments = async (req, res) => {
-    const { batch_id, lesson_id } = req.params; // Extract batch and lesson IDs from the URL
+    const { batch_id, module_id } = req.params; // Extract batch ID and module ID from the URL
     const token = req.headers.authorization?.split(" ")[1]; // Extract token from Authorization header
 
     if (!token) {
@@ -225,13 +225,16 @@ export const viewSubmittedAssignments = async (req, res) => {
         const sequelize = req.app.get("sequelize");
         const Submission = createSubmissionModel(sequelize);
 
-        // Fetch all submissions for the given batch and lesson
+        // Fetch all submissions for the given batch and module
         const submissions = await Submission.findAll({
-            where: { batch_id, assignment_id: lesson_id },
+            where: { 
+                batch_id, 
+                module_id // Now filtering by module_id instead of lesson_id
+            },
         });
 
         if (!submissions || submissions.length === 0) {
-            return res.status(404).json({ message: "No submissions found for the specified batch and lesson" });
+            return res.status(404).json({ message: "No submissions found for the specified batch and module" });
         }
 
         return res.status(200).json({ message: "Submissions retrieved successfully", submissions });

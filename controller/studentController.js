@@ -1,4 +1,4 @@
-import { UserModel, StudentBatch, BatchModel, CourseModel,ModuleModel ,StudentProgressModel,LessonModel} from "../postgres/postgres.js";
+import { UserModel, StudentBatch, BatchModel, CourseModel,ModuleModel ,QuizModel,AssignmentModel,LessonModel} from "../postgres/postgres.js";
 import { createSubmissionModel } from "../models/submitassignment.js";
 import { createAssignmentModel } from "../models/assignmentSchema.js";
 import { createLessonModel } from "../models/lessonSchema.js";
@@ -64,7 +64,9 @@ export const getAssignedCoursesForStudent = async (req, res) => {
     }
 };
 
-// Student retrieves their assigned modules within courses
+
+
+// Student retrieves their assigned modules within courses with module locking logic
 export const getAssignedModulesForStudent = async (req, res) => {
     const { student_id } = req.params; // `student_id` is passed as a path parameter
 
@@ -86,15 +88,25 @@ export const getAssignedModulesForStudent = async (req, res) => {
             include: [
                 {
                     model: BatchModel,
-                    as: "batch", // Alias defined in the association
+                    as: "batch",
                     include: [
                         {
                             model: CourseModel,
-                            as: "course", // Alias defined in the BatchModel's association
+                            as: "course",
                             include: [
                                 {
                                     model: ModuleModel,
-                                    as: "modules", // Alias for the modules in the CourseModel
+                                    as: "modules",
+                                    include: [
+                                        {
+                                            model: QuizModel,
+                                            as: "quizzes", // Assuming each module has a quiz
+                                        },
+                                        {
+                                            model: AssignmentModel,
+                                            as: "assignments", // Assuming each module has an assignment
+                                        },
+                                    ],
                                 },
                             ],
                         },
@@ -108,19 +120,36 @@ export const getAssignedModulesForStudent = async (req, res) => {
             return res.status(404).json({ message: "No modules assigned to the student" });
         }
 
-        // Format the response to include relevant module details
+        // Format the response with locking logic
         const modules = assignedData.flatMap((assignment) => {
             const { batch } = assignment;
             const { course } = batch || {};
             if (!course || !course.modules) return [];
-            return course.modules.map((module) => ({
-                course_id: course.id,
-                course_title: course.title,
-                batch_id: batch.id,
-                batch_title: batch.name, // Assuming `name` is the batch title
-                module_id: module.id,
-                module_title: module.title,
-            }));
+
+            // Sort modules by sequence or ID (ensure modules are ordered correctly)
+            const sortedModules = course.modules.sort((a, b) => a.id - b.id);
+
+            let unlocked = true; // Initially, the first module of all courses is unlocked
+
+            return sortedModules.map((module, index) => {
+                // Check if the quiz and assignment for the previous module are submitted
+                if (index > 0) {
+                    const prevModule = sortedModules[index - 1];
+                    const quizCompleted = prevModule.quiz && prevModule.quiz.status === "submitted";
+                    const assignmentCompleted = prevModule.assignment && prevModule.assignment.status === "submitted";
+                    unlocked = quizCompleted && assignmentCompleted;
+                }
+
+                return {
+                    course_id: course.id,
+                    course_title: course.title,
+                    batch_id: batch.id,
+                    batch_title: batch.name, // Assuming `name` is the batch title
+                    module_id: module.id,
+                    module_title: module.title,
+                    unlocked,
+                };
+            });
         });
 
         if (modules.length === 0) {
@@ -128,7 +157,7 @@ export const getAssignedModulesForStudent = async (req, res) => {
         }
 
         return res.status(200).json({
-            message: "Modules assigned to the student",
+            message: "Modules assigned to the student with locking logic",
             modules,
         });
     } catch (error) {
@@ -136,6 +165,8 @@ export const getAssignedModulesForStudent = async (req, res) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+
+
 
 // Student retrieves lessons for a specific module under a particular course
 export const getLessonsForModule = async (req, res) => {
@@ -260,49 +291,41 @@ export const getLessonContentpdf = async (req, res) => {
   
 
 
-
-//get assigned assignment
+// Get assigned assignments for a student under a module
 export const getAssignmentsForStudent = async (req, res) => {
-    const { lesson_id, student_id } = req.params; // Lesson ID and Student ID from route parameters
+    const { module_id, student_id } = req.params; // Module ID and Student ID from route parameters
 
     const sequelize = req.app.get("sequelize");
     const Assignment = createAssignmentModel(sequelize);
-    const Lesson = createLessonModel(sequelize);
     const StudentBatch = createStudentBatchAssignmentModel(sequelize); // Link between students and batches
     const Batch = createBatchModel(sequelize);
 
     try {
-        // Ensure the lesson exists
-        const lesson = await Lesson.findByPk(lesson_id);
-        if (!lesson) {
-            return res.status(404).json({ message: "Lesson not found" });
-        }
-
         // Get the batch associated with the student
         const studentBatch = await StudentBatch.findOne({ where: { student_id } });
         if (!studentBatch) {
             return res.status(404).json({ message: "Student is not assigned to any batch" });
         }
 
-        // Find assignments for the lesson and the student's batch
+        // Find assignments for the module and the student's batch
         const assignments = await Assignment.findAll({
             where: {
-                lesson_id,
+                module_id,
                 batch_id: studentBatch.batch_id,
             },
             attributes: [
-                'id', 
-                'title', 
-                'contentType', 
-                'contentUrl', 
-                'submissionLink', 
+                'id',
+                'title',
+                'contentType',
+                'contentUrl',
+                'submissionLink',
                 'createdAt',
                 'dueDate' // Include dueDate for assignments
             ], // Fields to return
         });
 
         if (assignments.length === 0) {
-            return res.status(404).json({ message: "No assignments found for this lesson" });
+            return res.status(404).json({ message: "No assignments found for this module" });
         }
 
         // Add view time information to each assignment
@@ -329,7 +352,7 @@ export const getAssignmentsForStudent = async (req, res) => {
 
 // Assignment submission
 export const submitAssignment = async (req, res) => {
-    const { batch_id, lesson_id } = req.params; // Extract batch ID and lesson ID from URL parameters
+    const { batch_id, module_id } = req.params; // Extract batch ID and module ID from URL parameters
     const { student_id } = req.body; // Extract student ID from the request body
 
     const sequelize = req.app.get("sequelize"); // Get the sequelize instance from the app
@@ -348,16 +371,16 @@ export const submitAssignment = async (req, res) => {
 
         const contentUrl = `/uploads/${req.file.filename}`; // Path to the uploaded file
 
-        // Get the assignment details to check the due date
+        // Get the assignment details to check the due date under the module
         const assignment = await Assignment.findOne({
             where: {
-                lesson_id,
                 batch_id,
+                module_id, // Now searching by module_id instead of lesson_id
             },
         });
 
         if (!assignment) {
-            return res.status(404).json({ message: "Assignment not found" });
+            return res.status(404).json({ message: "Assignment not found for this module" });
         }
 
         // Get the current date and the due date of the assignment

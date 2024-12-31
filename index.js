@@ -5,7 +5,7 @@ import router from "./routes/userRoute.js";
 import dotenv from 'dotenv';
 import adminrouter from "./routes/adminRoute.js";
 import superAdminRouter from "./routes/superadminRoute.js";
-import sequelize from "./config/sequelize.js";
+import { Sequelize } from "sequelize";
 import studentRouter from "./routes/studentRoute.js";
 import teacherrouter from "./routes/teacherRoute.js";
 import cookieParser from "cookie-parser";
@@ -17,6 +17,15 @@ const { Pool } = pkg;  // Destructure Pool from the package
 dotenv.config();
 const app = express();
 const PORT = 8000;
+
+
+
+const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASS, {
+  host: process.env.DB_HOST,  
+  dialect: 'postgres',
+  port: process.env.DB_PORT
+  });
+
 
 // Create a PostgreSQL pool
 const pool = new Pool({

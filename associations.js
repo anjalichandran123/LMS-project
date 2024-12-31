@@ -1,5 +1,5 @@
 export const defineAssociations = (sequelize) => {
-    const { User, Batch, StudentBatchAssignment, Course, Module, Lesson, TeacherBatchAssignment,Feedback } = sequelize.models;
+    const { User, Batch, StudentBatchAssignment, Course, Module, Lesson, TeacherBatchAssignment, Feedback, Quizzes, Assignment } = sequelize.models;
 
     // User and StudentBatch association
     User.hasMany(StudentBatchAssignment, { foreignKey: "student_id", as: "studentBatches" });
@@ -29,10 +29,19 @@ export const defineAssociations = (sequelize) => {
     Module.hasMany(Lesson, { foreignKey: "module_id", as: "lessons" });
     Lesson.belongsTo(Module, { foreignKey: "module_id", as: "module" });
 
+    // Module and Quiz association
+    Module.hasMany(Quizzes, { foreignKey: "module_id", as: "quizzes" });
+    Quizzes.belongsTo(Module, { foreignKey: "module_id", as: "module" });
+
+    // Module and Assignment association (add this association)
+    Module.hasMany(Assignment, { foreignKey: "module_id", as: "assignments" }); // This line defines the association
+    Assignment.belongsTo(Module, { foreignKey: "module_id", as: "module" }); // Reverse association
+
+    // Lesson has many Feedback associations
     Lesson.hasMany(Feedback, { foreignKey: "lesson_id", as: "feedbacks" });
     Feedback.belongsTo(Lesson, { foreignKey: "lesson_id", as: "lesson" });
 
+    // User has many Feedback associations (for student feedback)
     User.hasMany(Feedback, { foreignKey: "student_id", as: "studentFeedbacks" });
     Feedback.belongsTo(User, { foreignKey: "student_id", as: "student" });
-
 };
